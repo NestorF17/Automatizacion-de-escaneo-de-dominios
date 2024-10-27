@@ -21,8 +21,9 @@
 # For more information see the manual pages of crontab(5) and cron(8)
 # 
 # m h  dom mon dow   command
+# Este cron ejecuta el script scan_dominios.sh cada hora y guarda la salida en scan_log.txt
 0 * * * * /home/kali/scan_dominios.sh > /home/kali/scan_log.txt 2>&1
-0 8 * * * /ruta/a/tu/script/reporte_diario.sh
+
 
 
 
