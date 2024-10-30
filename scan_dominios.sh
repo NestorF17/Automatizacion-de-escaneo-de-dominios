@@ -1,7 +1,13 @@
 #!/bin/bash
 
+# Configuración de Telegram
+TELEGRAM_TOKEN="TU_TOKEN_DE_TELEGRAM"  # Reemplaza con tu token
+CHAT_ID="TU_ID_DE_CHAT"                 # Reemplaza con tu ID de chat
+
 # Archivo de log para almacenar resultados de escaneo anterior
 scan_log="scan_log.txt"
+resultados_dir="resultados"  # Carpeta para almacenar resultados
+mkdir -p "$resultados_dir"    # Crear carpeta si no existe
 
 # Lista de dominios desde un archivo
 dominios=($(cat dominios.txt))
@@ -9,7 +15,7 @@ dominios=($(cat dominios.txt))
 # Función para enviar mensajes a Telegram
 send_telegram_message() {
     local message="$1"
-    curl -s -X POST "https://api.telegram.org/bot7609412093:AAFhPMmNP04gkDbL_pVjEvcBpQ-jF0a9itE/sendMessage" -d "chat_id=986489207" -d "text=$message"
+    curl -s -X POST "https://api.telegram.org/bot$TELEGRAM_TOKEN/sendMessage" -d "chat_id=$CHAT_ID" -d "text=$message"
 }
 
 # Comprobar si hay nuevos dominios
@@ -28,8 +34,18 @@ check_new_domains() {
 for dominio in "${dominios[@]}"; do
     send_telegram_message "Iniciando escaneo de: $dominio"
     
+    # Escaneo de subdominios con Sublist3r
+    send_telegram_message "📄 Escaneando subdominios de $dominio con Sublist3r..."
+    sublist3r -d "$dominio" -o "$resultados_dir/${dominio}_sublist3r.txt"
+    if [ $? -eq 0 ]; then
+        send_telegram_message "✅ Sublist3r completado para $dominio."
+    else
+        send_telegram_message "⚠️ Error: Sublist3r falló para $dominio."
+        continue
+    fi
+
     # Escaneo con Nmap
-    nmap -sV -oN "${dominio}_nmap.txt" "$dominio"
+    nmap -sV -oN "${resultados_dir}/${dominio}_nmap.txt" "$dominio"
     
     # Verificar si Nmap falló
     if [ $? -ne 0 ]; then
@@ -41,7 +57,7 @@ for dominio in "${dominios[@]}"; do
     echo "$dominio" >> "$scan_log"
     
     # Comprobar puertos abiertos
-    open_ports=$(grep '/tcp' "${dominio}_nmap.txt" | grep 'open')
+    open_ports=$(grep '/tcp' "${resultados_dir}/${dominio}_nmap.txt" | grep 'open')
     if [ -n "$open_ports" ]; then
         echo "Puertos abiertos detectados para $dominio:"
         echo "$open_ports"
